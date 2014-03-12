@@ -46,7 +46,7 @@ class EWSWrapper:
     #for pagination purposes (search / sync)
 
     def __init__(self, host, username, password, datadir='wsdl', protocol='https', \
-                 authtype=None, debug=False, timeArr=[]):
+                 authtype=None, debug=False, timeArr=[], cache_dir=None):
 
         self.host = host
         self.protocol = protocol
@@ -68,9 +68,6 @@ class EWSWrapper:
         else:
             tmp_basepath = self.basepath
         localwsdl = 'file:///%s/services.wsdl' % (tmp_basepath)
-        #cache path
-        cachepath = basepath.replace('\\', '/') + '/suds_cache'
-
 
         #timezone settings
         if timeArr:
@@ -90,22 +87,15 @@ class EWSWrapper:
         else:
             raise Exception('Auth type not supported by Client(): %s' % authtype)
 
-        #import jsonpickle
-        #a = jsonpickle.encode(self)
-        #h = open('/tmp/ews_ser.txt', 'w')
-        #h.write(a)
-        #h.close()
-
         if debug:
             #logging.basicConfig(level=logging.DEBUG, filename='/var/log/ews_debug.log',
             #        format='%(asctime)s %(levelname)s: %(message)s',
             #        datefmt='%Y-%m-%d %H:%M:%S')
             logging.getLogger('suds.client').setLevel(logging.DEBUG)
-            the_cache = cache.FileCache(location=cachepath, days=0)
-            self.client = Client(url=localwsdl, transport=auth, cache=the_cache)
-        else:
-            the_cache = cache.FileCache(location=cachepath, days=0)
-            self.client = Client(url=localwsdl, transport=auth, cache=the_cache)
+
+        cache = cache.FileCache(location=cache_dir, days=0) if cache_dir is not None else None
+        self.client = Client(url=localwsdl, transport=auth, cache=cache)
+
         self.version = self.Version(self)
         self.wrapper = self.Wrapper(self)
 
@@ -125,19 +115,22 @@ class EWSWrapper:
             # official name corresponding to the version numbers supplied
             # in SOAP response headers. For some unknown reason, they may
             # differ.
-            versiondict = {\
-                '8': {\
-                    '0': ('Exchange2007','Microsoft Exchange Server 2007'),\
-                    '1': ('Exchange2007_SP1','Microsoft Exchange Server 2007 SP1'),\
-                    '2': ('Exchange2007_SP2','Microsoft Exchange Server 2007 SP2'), \
-                    '3': ('Exchange2007_SP3','Microsoft Exchange Server 2007 SP3') \
-                    },\
-                '14': {\
-                    '0': ('Exchange2010','Microsoft Exchange Server 2010'),\
-                    '1': ('Exchange2010_SP1','Microsoft Exchange Server 2010 SP1'),\
-                    '2': ('Exchange2010_SP2','Microsoft Exchange Server 2010 SP2'),\
-                    '16': ('Exchange2010_SP2','Microsoft Exchange Server 2010 SP2') \
-                    }\
+            versiondict = {
+                '8': {
+                    '0': ('Exchange2007','Microsoft Exchange Server 2007'),
+                    '1': ('Exchange2007_SP1','Microsoft Exchange Server 2007 SP1'),
+                    '2': ('Exchange2007_SP2','Microsoft Exchange Server 2007 SP2'),
+                    '3': ('Exchange2007_SP3','Microsoft Exchange Server 2007 SP3')
+                    },
+                '14': {
+                    '0': ('Exchange2010','Microsoft Exchange Server 2010'),
+                    '1': ('Exchange2010_SP1','Microsoft Exchange Server 2010 SP1'),
+                    '2': ('Exchange2010_SP2','Microsoft Exchange Server 2010 SP2'),
+                    '16': ('Exchange2010_SP2','Microsoft Exchange Server 2010 SP2')
+                    },
+                '15': {
+                    '0': ('Exchange2013', 'Microsoft Exchange Server 2013'),
+                    },
             }
 
             if versiondict.has_key(self.majorversion) and\
@@ -145,8 +138,8 @@ class EWSWrapper:
                 self.realshortname, self.name = \
                     versiondict[self.majorversion][self.minorversion]
             else:
-                raise Exception('Unknown Exchange version. I know the \
-                    following: %s' % versiondict)
+                raise Exception('Unknown Exchange version %s.%s. I know the '
+                                'following: %s' % (self.majorversion, self.minorversion, versiondict))
 
             self.build = '%s.%s.%s.%s' % (self.majorversion, self.minorversion, \
                                           self.majorbuildnumber, self.minorbuildnumber)
