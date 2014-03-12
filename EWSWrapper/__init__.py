@@ -31,7 +31,7 @@ from datetime import timedelta
 from os import path
 from copy import deepcopy
 from xml.etree import ElementTree
-import EWSType
+import EWSWrapper.EWSType
 
 class EWSWrapper:
     '''Provides an interface for an Exchange server.'''
