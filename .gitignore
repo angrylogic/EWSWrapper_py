@@ -1,5 +1,8 @@
 #python specific
 *.pyc
+build
+dist
+MANIFEST
 
 ## generic files to ignore
 *~
